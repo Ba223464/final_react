@@ -1,16 +1,23 @@
-import { useState, useEffect } from 'react';
-import { Search, UserPlus, Bell, Menu, User, Clock, FileText, BarChart2, Calendar, Heart, Activity, Settings, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import { 
+  Search, UserPlus, Bell, Menu, User, X, Clock, FileText, BarChart2, Calendar, Heart, Activity, Settings 
+} from 'lucide-react';
+
+// Configure Axios base URL
 axios.defaults.baseURL = 'http://localhost:5000/api';
+
 function PatientFormModal({ isOpen, onClose, patient, onSave, isEditing }) {
   const [formData, setFormData] = useState({
-    name: '',
+    patientName: '',
     age: '',
     gender: '',
-    dob: '',
+    dateOfBirth: '',
     status: 'Stable',
     bloodType: '',
-    bloodPressure: '',
+    vitalSigns: {
+      bloodPressure: ''
+    },
     medicalHistory: '',
     medications: '',
     ehrId: '',
@@ -22,16 +29,18 @@ function PatientFormModal({ isOpen, onClose, patient, onSave, isEditing }) {
     currentMedications: '',
     allergies: ''
   });
+
   useEffect(() => {
     if (patient && isEditing) {
       setFormData({
-        name: patient.name || '',
+        patientName: patient.name || '',
         age: patient.age || '',
         gender: patient.gender || '',
-        dob: patient.dob || '',
         status: patient.status || 'Stable',
         bloodType: patient.bloodType || '',
-        bloodPressure: patient.bloodPressure || '',
+        vitalSigns: {
+          bloodPressure: patient.bloodPressure || ''
+        },
         medicalHistory: Array.isArray(patient.medicalHistory) 
           ? patient.medicalHistory.join('\n') 
           : '',
@@ -52,10 +61,22 @@ function PatientFormModal({ isOpen, onClose, patient, onSave, isEditing }) {
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData({
-      ...formData,
-      [name]: value
-    });
+    
+    // Handle nested vitalSigns
+    if (name === 'bloodPressure') {
+      setFormData(prev => ({
+        ...prev,
+        vitalSigns: {
+          ...prev.vitalSigns,
+          bloodPressure: value
+        }
+      }));
+    } else {
+      setFormData({
+        ...formData,
+        [name]: value
+      });
+    }
   };
 
   const handleSubmit = (e) => {
@@ -83,13 +104,14 @@ function PatientFormModal({ isOpen, onClose, patient, onSave, isEditing }) {
         </div>
         
         <form onSubmit={handleSubmit} className="p-6">
+          //doctor edit function change to remove fields
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Patient Name</label>
               <input
                 type="text"
-                name="name"
-                value={formData.name}
+                name="patientName"
+                value={formData.patientName}
                 onChange={handleChange}
                 className="w-full p-2 border rounded-md"
                 required
@@ -137,18 +159,6 @@ function PatientFormModal({ isOpen, onClose, patient, onSave, isEditing }) {
             </div>
             
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Date of Birth</label>
-              <input
-                type="date"
-                name="dob"
-                value={formData.dob}
-                onChange={handleChange}
-                className="w-full p-2 border rounded-md"
-                required
-              />
-            </div>
-            
-            <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
               <select
                 name="status"
@@ -189,7 +199,7 @@ function PatientFormModal({ isOpen, onClose, patient, onSave, isEditing }) {
               <input
                 type="text"
                 name="bloodPressure"
-                value={formData.bloodPressure}
+                value={formData.vitalSigns.bloodPressure}
                 onChange={handleChange}
                 placeholder="120/80"
                 className="w-full p-2 border rounded-md"
@@ -215,39 +225,6 @@ function PatientFormModal({ isOpen, onClose, patient, onSave, isEditing }) {
                 onChange={handleChange}
                 placeholder="Enter each medication on a new line"
                 className="w-full p-2 border rounded-md h-24"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Document Hash</label>
-              <input
-                type="text"
-                name="documentHash"
-                value={formData.documentHash}
-                onChange={handleChange}
-                className="w-full p-2 border rounded-md"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Doctor ID</label>
-              <input
-                type="text"
-                name="doctorId"
-                value={formData.doctorId}
-                onChange={handleChange}
-                className="w-full p-2 border rounded-md"
-              />
-            </div>
-            
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Blood Group</label>
-              <input
-                type="text"
-                name="bloodGroup"
-                value={formData.bloodGroup}
-                onChange={handleChange}
-                className="w-full p-2 border rounded-md"
               />
             </div>
             
@@ -319,7 +296,7 @@ function PatientFormModal({ isOpen, onClose, patient, onSave, isEditing }) {
 
 export default function HospitalEHR() {
   const [activePatient, setActivePatient] = useState(null);
-  const [activePage, setActivePage] = useState('dashboard');
+  const [activePage, setActivePage] = useState('patients');
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [filteredPatients, setFilteredPatients] = useState([]);
@@ -333,8 +310,7 @@ export default function HospitalEHR() {
     const fetchPatients = async () => {
       try {
         setLoading(true);
-        // url
-        const response = await axios.get('http://localhost:5000/api');
+        const response = await axios.get('http://localhost:5000/api/data');
         const formattedPatients = transformPatientData(response.data);
         
         setPatients(formattedPatients);
@@ -352,6 +328,7 @@ export default function HospitalEHR() {
 
     fetchPatients();
   }, []);
+
   const transformPatientData = (mongoData) => {
     return mongoData.map(record => {
       return {
@@ -424,21 +401,21 @@ export default function HospitalEHR() {
 
   const handleSavePatient = async (patientData, isEditing) => {
     try {
-      if (isEditing) {
-        const response = await axios.put('http://localhost:5000/api', patientData);
+      if (isEditing && activePatient) {
+        const response = await axios.put(`/patients/${activePatient.id}`, patientData);
         
         const updatedPatients = patients.map(patient => 
-          patient.id === activePatient.id ? response.data : patient
+          patient.id === activePatient.id ? transformPatientData([response.data])[0] : patient
         );
         
         setPatients(updatedPatients);
         setFilteredPatients(updatedPatients);
-        setActivePatient(response.data);
+        setActivePatient(transformPatientData([response.data])[0]);
         
       } else {
-        const response = await axios.post('/api/patients', patientData);
+        const response = await axios.post('/patients', patientData);
         
-        const newPatient = response.data;
+        const newPatient = transformPatientData([response.data])[0];
         const updatedPatients = [...patients, newPatient];
         
         setPatients(updatedPatients);
@@ -449,12 +426,48 @@ export default function HospitalEHR() {
       setShowPatientForm(false);
     } catch (err) {
       console.error('Error saving patient data:', err);
-      alert(`Failed to ${isEditing ? 'update' : 'add'} patient: ${err.message}`);
+      alert(`Failed to ${isEditing ? 'update' : 'add'} patient: ${err.response?.data?.message || err.message}`);
     }
   };
 
+  // Utility Functions
+  function getStatusColor(status) {
+    switch(status) {
+      case 'Critical': return 'bg-red-500';
+      case 'Stable': return 'bg-green-500';
+      case 'Recovering': return 'bg-blue-500';
+      case 'Scheduled': return 'bg-purple-500';
+      default: return 'bg-gray-500';
+    }
+  }
+
+  function getStatusTextColor(status) {
+    switch(status) {
+      case 'Critical': return 'text-red-500';
+      case 'Stable': return 'text-green-500';
+      case 'Recovering': return 'text-blue-500';
+      case 'Scheduled': return 'text-purple-500';
+      default: return 'text-gray-500';
+    }
+  }
+
+  function NavItem({ icon, label, active, expanded, onClick }) {
+    return (
+      <button 
+        onClick={onClick}
+        className={`w-full flex items-center p-3 ${active ? 'bg-blue-700' : 'hover:bg-blue-700'} transition-colors`}
+      >
+        <div className="flex items-center justify-center w-8 h-8">
+          {icon}
+        </div>
+        {expanded && <span className="ml-3">{label}</span>}
+      </button>
+    );
+  }
+
   return (
     <div className="flex h-screen bg-gray-100">
+      {/* Sidebar */}
       <div className={`bg-blue-800 text-white ${sidebarOpen ? 'w-64' : 'w-20'} transition-all duration-300 flex flex-col`}>
         <div className="p-4 flex items-center justify-between">
           {sidebarOpen ? (
@@ -467,25 +480,19 @@ export default function HospitalEHR() {
           </button>
         </div>
         <div className="flex-1 mt-6">
-          <NavItem icon={<User />} label="Patients" active={activePage === 'patients'} expanded={sidebarOpen} onClick={() => setActivePage('patients')} />
-        </div>
-        <div className="p-4">
-          <div className="flex items-center">
-            <div className="bg-blue-600 rounded-full w-10 h-10 flex items-center justify-center">
-              <User size={20} />
-            </div>
-            {sidebarOpen && (
-              <div className="ml-3">
-                <p className="text-sm font-medium">Dr. Sherlock Holmes</p>
-                <p className="text-xs opacity-70">Cardiologist</p>
-              </div>
-            )}
-          </div>
+          <NavItem 
+            icon={<User />} 
+            label="Patients" 
+            active={activePage === 'patients'} 
+            expanded={sidebarOpen} 
+            onClick={() => setActivePage('patients')} 
+          />
         </div>
       </div>
 
-
+      {/* Main Content Area */}
       <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Header */}
         <header className="bg-white shadow-sm z-10">
           <div className="flex items-center justify-between p-4">
             <div className="flex items-center bg-gray-100 rounded-lg px-3 py-2 w-64">
@@ -499,24 +506,21 @@ export default function HospitalEHR() {
               />
             </div>
             <div className="flex items-center space-x-4">
-              <button className="relative bg-blue-50 p-2 rounded-full text-blue-600 hover:bg-blue-100">
-                <Bell size={20} />
-                <span className="absolute top-0 right-0 w-4 h-4 bg-red-500 rounded-full text-white text-xs flex items-center justify-center">3</span>
-              </button>
-              <button 
+              {/* <button 
                 className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center"
                 onClick={handleAddPatient}
               >
                 <UserPlus size={16} className="mr-2" />
                 <span>Add Patient</span>
-              </button>
+              </button> */}
             </div>
           </div>
         </header>
 
+        {/* Main Content */}
         <main className="flex-1 overflow-y-auto p-6">
           <div className="mb-6">
-            <h2 className="text-2xl font-bold text-gray-800">Patient Dashboard</h2>
+            <h2 className="text-2xl font-bold text-gray-800">EHR view</h2>
             <p className="text-gray-600">Manage and monitor patient records</p>
             {searchTerm && (
               <div className="mt-2 text-sm text-blue-600">
@@ -537,6 +541,7 @@ export default function HospitalEHR() {
             </div>
           ) : (
             <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+              {/* Patient List */}
               <div className="bg-white rounded-lg shadow-md lg:col-span-1 overflow-hidden">
                 <div className="p-4 bg-blue-50 border-b border-blue-100">
                   <h3 className="text-lg font-bold text-gray-800">
@@ -574,6 +579,7 @@ export default function HospitalEHR() {
                 </div>
               </div>
 
+              {/* Patient Details */}
               <div className="bg-white rounded-lg shadow-md lg:col-span-3">
                 {activePatient ? (
                   <>
@@ -610,14 +616,27 @@ export default function HospitalEHR() {
                       </div>
                     </div>
 
+                    {/* Additional Patient Details Sections */}
                     <div className="p-6">
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                      </div>
+                      {/* You can add more detailed sections here about patient's medical information */}
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      </div>
-                      <div className="mt-6">
-                      </div>
-                      <div className="mt-6 p-4 bg-gray-50 rounded-lg border">
+                        <div>
+                          <h3 className="text-lg font-semibold mb-3">Medical Information</h3>
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <p><strong>Blood Type:</strong> {activePatient.bloodType}</p>
+                            <p><strong>Blood Pressure:</strong> {activePatient.bloodPressure}</p>
+                            <p><strong>Medical History:</strong> {activePatient.medicalHistory || 'None'}</p>
+                            <p><strong>Allergies:</strong> {activePatient.allergies || 'None'}</p>
+                            <p><strong>Medications:</strong> {activePatient.medications || 'None'}</p>
+                          </div>
+                        </div>
+                        <div>
+                          <h3 className="text-lg font-semibold mb-3">Contact Details</h3>
+                          <div className="bg-gray-50 p-4 rounded-lg">
+                            <p><strong>Contact Number:</strong> {activePatient.contactNumber}</p>
+                            <p><strong>Address:</strong> {activePatient.address}</p>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </>
@@ -632,7 +651,7 @@ export default function HospitalEHR() {
         </main>
       </div>
 
-
+      {/* Patient Form Modal */}
       <PatientFormModal 
         isOpen={showPatientForm}
         onClose={() => setShowPatientForm(false)}
@@ -642,38 +661,4 @@ export default function HospitalEHR() {
       />
     </div>
   );
-}
-
-function NavItem({ icon, label, active, expanded, onClick }) {
-  return (
-    <button 
-      onClick={onClick}
-      className={`w-full flex items-center p-3 ${active ? 'bg-blue-700' : 'hover:bg-blue-700'} transition-colors`}
-    >
-      <div className="flex items-center justify-center w-8 h-8">
-        {icon}
-      </div>
-      {expanded && <span className="ml-3">{label}</span>}
-    </button>
-  );
-}
-
-function getStatusColor(status) {
-  switch(status) {
-    case 'Critical': return 'bg-red-500';
-    case 'Stable': return 'bg-green-500';
-    case 'Recovering': return 'bg-blue-500';
-    case 'Scheduled': return 'bg-purple-500';
-    default: return 'bg-gray-500';
-  }
-}
-
-function getStatusTextColor(status) {
-  switch(status) {
-    case 'Critical': return 'text-red-500';
-    case 'Stable': return 'text-green-500';
-    case 'Recovering': return 'text-blue-500';
-    case 'Scheduled': return 'text-purple-500';
-    default: return 'text-gray-500';
-  }
 }
